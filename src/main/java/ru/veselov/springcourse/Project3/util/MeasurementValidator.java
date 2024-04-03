@@ -4,33 +4,34 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
+import ru.veselov.springcourse.Project3.models.Measurement;
 import ru.veselov.springcourse.Project3.models.Sensor;
 import ru.veselov.springcourse.Project3.services.SensorsService;
 
-import java.util.Optional;
-
 @Component
-public class SensorValidator implements Validator {
+public class MeasurementValidator implements Validator {
 
-    private final SensorsService sensorsService;
+    private SensorsService sensorsService;
 
     @Autowired
-    public SensorValidator(SensorsService sensorsService) {
+    public MeasurementValidator(SensorsService sensorsService) {
         this.sensorsService = sensorsService;
     }
 
-
     @Override
     public boolean supports(Class<?> clazz) {
-        return Sensor.class.equals(clazz);
+        return Measurement.class.equals(clazz);
     }
 
     @Override
     public void validate(Object target, Errors errors) {
-        Sensor sensor = (Sensor) target;
+        Measurement measurement = (Measurement) target;
 
-        if (sensorsService.findByName(sensor.getName()).isPresent())
-            errors.rejectValue("name", "", "Sensor with this name already exists!");
+        if (measurement.getSensor() == null)
+            return;
+
+        if (sensorsService.findByName(measurement.getSensor().getName()).isEmpty())
+            errors.rejectValue("sensor",  "", "There is no registered sensor with such name!");
 
     }
 }

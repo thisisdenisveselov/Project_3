@@ -6,18 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 import ru.veselov.springcourse.Project3.dto.MeasurementDTO;
 import ru.veselov.springcourse.Project3.dto.MeasurementsResponse;
 import ru.veselov.springcourse.Project3.models.Measurement;
-import ru.veselov.springcourse.Project3.models.Sensor;
 import ru.veselov.springcourse.Project3.services.MeasurementsService;
 import ru.veselov.springcourse.Project3.services.SensorsService;
 import ru.veselov.springcourse.Project3.util.*;
 
-import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -27,11 +23,15 @@ public class MeasurementsController {
     private final ModelMapper modelMapper;
     private final SensorsService sensorsService;
 
+    private final MeasurementValidator measurementValidator;
+
     @Autowired
-    public MeasurementsController(MeasurementsService measurementsService, ModelMapper modelMapper, SensorsService sensorsService) {
+    public MeasurementsController(MeasurementsService measurementsService, ModelMapper modelMapper,
+                                  SensorsService sensorsService, MeasurementValidator measurementValidator) {
         this.measurementsService = measurementsService;
         this.modelMapper = modelMapper;
         this.sensorsService = sensorsService;
+        this.measurementValidator = measurementValidator;
     }
 
    /* @GetMapping
@@ -60,42 +60,29 @@ public class MeasurementsController {
     @PostMapping("/add")
     public ResponseEntity<HttpStatus> add(@RequestBody @Valid MeasurementDTO measurementDTO, BindingResult bindingResult) {
 
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMsg = new StringBuilder();
-
-            List<FieldError> errors = bindingResult.getFieldErrors();
-            for (FieldError error : errors) {
-                errorMsg.append(error.getField())
-                        .append("-")
-                        .append(error.getDefaultMessage())
-                        .append(";");
-            }
-            throw new MeasurementNotAddedException(errorMsg.toString());
-        }
-
-        Optional<Sensor> sensor  = sensorsService.findByName(measurementDTO.getSensor().getName());
-        if(sensor.isEmpty())
-            throw new SensorNotFoundException();
-
         Measurement measurement = convertToMeasurement(measurementDTO);
-        measurement.setSensor(sensor.get());
+
+        measurementValidator.validate(measurement, bindingResult);
+        if (bindingResult.hasErrors())
+            ErrorsUtil.returnErrorsToClient(bindingResult);
+
         measurementsService.save(measurement);
 
         return ResponseEntity.ok(HttpStatus.OK);
     }
 
-    @ExceptionHandler  //catch exception and return json with exception
+/*    @ExceptionHandler  //catch exception and return json with exception
     private ResponseEntity<SensorErrorResponse> handlerException(SensorNotFoundException e) {
         SensorErrorResponse response = new SensorErrorResponse(
                 "Measurement wasn't added because there is bo sensor with such name in database",
                 System.currentTimeMillis());
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
+    }*/
 
     @ExceptionHandler  //catch exception and return json with exception
-    private ResponseEntity<SensorErrorResponse> handlerException(MeasurementNotAddedException e) {
-        SensorErrorResponse response = new SensorErrorResponse(
+    private ResponseEntity<MeasurementErrorResponse> handlerException(MeasurementException e) {
+        MeasurementErrorResponse response = new MeasurementErrorResponse(
                 e.getMessage(),
                 System.currentTimeMillis());
 

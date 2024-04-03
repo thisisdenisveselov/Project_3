@@ -32,7 +32,9 @@ public class MeasurementsService {
     }
     @Transactional
     public void save(Measurement measurement) {
+        measurement.setSensor(sensorsService.findByName(measurement.getSensor().getName()).get());
         measurement.setCreated_at(LocalDateTime.now());
+
         measurementsRepository.save(measurement);
     }
 }

@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.veselov.springcourse.Project3.dto.SensorDTO;
 import ru.veselov.springcourse.Project3.models.Sensor;
 import ru.veselov.springcourse.Project3.services.SensorsService;
-import ru.veselov.springcourse.Project3.util.SensorErrorResponse;
-import ru.veselov.springcourse.Project3.util.SensorNameIsTakenException;
-import ru.veselov.springcourse.Project3.util.SensorNotCreatedException;
-import ru.veselov.springcourse.Project3.util.SensorValidator;
+import ru.veselov.springcourse.Project3.util.*;
 
 import java.util.List;
 
@@ -35,20 +32,13 @@ public class SensorsController {
     @PostMapping("/registration")
     public ResponseEntity<HttpStatus> create(@RequestBody @Valid SensorDTO sensorDTO, BindingResult bindingResult) { //@RequestBody - converts json to Person
 
-        if (bindingResult.hasErrors()) {
-            StringBuilder errorMsg = new StringBuilder();
+        Sensor sensor = convertToSensor(sensorDTO);
+        sensorValidator.validate(sensor, bindingResult);
 
-            List<FieldError> errors = bindingResult.getFieldErrors();
-            for (FieldError error : errors) {
-                errorMsg.append(error.getField())
-                        .append("-")
-                        .append(error.getDefaultMessage())
-                        .append(";");
-            }
-            throw new SensorNotCreatedException(errorMsg.toString());
-        }
+        if (bindingResult.hasErrors())
+            ErrorsUtil.returnErrorsToClient(bindingResult);
 
-        sensorsService.save(convertToSensor(sensorDTO));
+        sensorsService.save(sensor);
 
         return ResponseEntity.ok(HttpStatus.OK);
     }
@@ -63,7 +53,7 @@ public class SensorsController {
     }
 
     @ExceptionHandler  //catch exception and return json with exception
-    private ResponseEntity<SensorErrorResponse> handlerException(SensorNotCreatedException e) {
+    private ResponseEntity<SensorErrorResponse> handlerException(MeasurementException e) {
         SensorErrorResponse response = new SensorErrorResponse(
                 e.getMessage(),
                 System.currentTimeMillis());
